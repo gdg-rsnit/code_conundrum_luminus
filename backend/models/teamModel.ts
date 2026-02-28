@@ -5,6 +5,8 @@ export interface ITeam{
     teamMembers:string[];
     banned:boolean;
     bannedAt:Date|null;
+    score:number;
+    time:number;
     createdAt:Date;
     updatedAt:Date;
 }
@@ -35,6 +37,16 @@ const teamSchema=new Schema<ITeam>({
     bannedAt:{
         type:Date,
         default:null
+    },
+    score:{
+        type:Number,
+        default:0,
+        min:0
+    },
+    time:{
+        type:Number,
+        default:0,
+        min:0
     }
 },{timestamps:true});
 

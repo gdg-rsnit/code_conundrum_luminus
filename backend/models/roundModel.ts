@@ -9,6 +9,7 @@ export interface IRound{
     isPaused:boolean;
     pauseStartAt:Date|null;
     totalPauseDuration:number;
+    submissionLocked:boolean;
     createdAt:Date;
     updatedAt:Date;
 }
@@ -48,6 +49,10 @@ const roundSchema=new Schema<IRound>({
     totalPauseDuration:{
         type:Number,
         default:0
+    },
+    submissionLocked:{
+        type:Boolean,
+        default:false
     }
 },{timestamps:true});
 

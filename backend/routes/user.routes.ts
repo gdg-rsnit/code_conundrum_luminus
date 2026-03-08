@@ -17,8 +17,6 @@ router.post("/logout",logoutUser);
 
 //admin routes
 router.route("/").get(authenticate,authorizeAdmin,getAllUsers);
-
-//ban routes
 router.delete("/:id",authenticate,authorizeAdmin,deleteUserById);
 
 

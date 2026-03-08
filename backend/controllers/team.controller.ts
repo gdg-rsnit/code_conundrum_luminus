@@ -2,7 +2,7 @@ import asyncHandler from "../middlewares/asyncHandler.middleware.js";
 import type { Request, Response } from "express";
 import { Team, type ITeam } from "../models/teamModel.js";
 import { Penalty, type IPenalty } from "../models/penaltySchema.js";
-import { createPenaltySchema, updatePenaltySchema } from "../schemas/penaltySchema.js";
+import { createPenaltySchema, updatePenaltySchema } from "../../schemas/penaltySchema.js";
 import { ZodError } from "zod";
 import { TeamRound } from "../models/teamRoundSchema.js";
 
@@ -62,16 +62,12 @@ const getTeams = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const penalizeTeams = asyncHandler(async (req: Request, res: Response) => {
-    const validationResult = createPenaltySchema.safeParse(req.body);
-    if (!validationResult.success) {
-        const errors = validationResult.error.issues.map(err => ({
-            field: err.path.join("."),
-            message: err.message,
-        }));
-        return res.status(400).json({ success: false, message: "Validation failed", errors });
+    const result = createPenaltySchema.safeParse(req.body);
+    if (!result.success) {
+        return res.status(400).json({ error: result.error.issues });
     }
 
-    const { teamId, roundId, timeDeducted, scoreDeducted, reason } = validationResult.data;
+    const { teamId, roundId, timeDeducted, scoreDeducted, reason } = result.data;
 
     const team = await Team.findById(teamId);
     if (!team) return res.status(404).json({ success: false, message: "Team not found" });

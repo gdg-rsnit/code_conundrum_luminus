@@ -8,6 +8,27 @@ import { Submission } from "../models/submissionModel.js";
 import { Penalty } from "../models/penaltySchema.js";
 import { Answer } from "../models/answerModel.js";
 
+const autoEndExpiredLiveRounds = async () => {
+    const now = new Date();
+
+    await Round.updateMany(
+        {
+            status: "LIVE",
+            isPaused: false,
+            endTime: { $ne: null, $lte: now }
+        },
+        {
+            $set: {
+                status: "ENDED",
+                submissionLocked: true,
+                isPaused: false,
+                pauseStartAt: null,
+                endTime: now
+            }
+        }
+    );
+};
+
 const createRound = asyncHandler(async (req: Request, res: Response) => {
     const result = createRoundSchema.safeParse(req.body);
 
@@ -17,7 +38,11 @@ const createRound = asyncHandler(async (req: Request, res: Response) => {
     const { roundNumber, duration, status } = result.data
     const roundNo = await Round.findOne({ roundNumber });
     if (roundNo) {
-        return res.status(400).json({ error: "roundno already exists" });
+        return res.status(400).json({
+            success: false,
+            message: "Round already exists",
+            error: "Round already exists"
+        });
     }
 
     const round = await Round.create({ roundNumber, duration, status });
@@ -31,6 +56,7 @@ const createRound = asyncHandler(async (req: Request, res: Response) => {
 })
 
 const getRounds = asyncHandler(async (req: Request, res: Response) => {
+    await autoEndExpiredLiveRounds();
     const rounds = await Round.find({}).sort({createdAt:-1})
     if (!rounds) {
         throw new Error("Round not found")
@@ -40,6 +66,7 @@ const getRounds = asyncHandler(async (req: Request, res: Response) => {
 
 const getRoundById=asyncHandler(async(req:Request,res:Response)=>{
     const {roundId}=req.params;
+    await autoEndExpiredLiveRounds();
     const round=await Round.findById(roundId);
     if(!round){
         res.status(404);
@@ -94,6 +121,8 @@ const updateRound=asyncHandler(async(req:Request,res:Response)=>{
 const startRound=asyncHandler(async(req:Request,res:Response)=>{
     const {roundId}=req.params
 
+    await autoEndExpiredLiveRounds();
+
     const round=await Round.findById(roundId);
     if (!round){
         return res.status(404).json({message:"round not found"})
@@ -124,6 +153,8 @@ const pauseAndResume=asyncHandler(async(req:Request,res:Response)=>{
     if (!roundId) {
         return res.status(400).json({ success: false, message: "roundId is required" });
     }
+
+    await autoEndExpiredLiveRounds();
     
     const round=await Round.findById(roundId);
     
@@ -174,6 +205,8 @@ const pauseAndResume=asyncHandler(async(req:Request,res:Response)=>{
 const extendRound = asyncHandler(async (req: Request, res: Response) => {
     const { roundId } = req.params;
     const { extraSeconds } = req.body;
+
+    await autoEndExpiredLiveRounds();
 
     if (extraSeconds <= 0) {
         return res.status(400).json({

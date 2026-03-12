@@ -7,10 +7,12 @@ import redisClient from './config/redis.js'
 
 const PORT: number = Number(process.env.PORT) || 3000
 
-// Connect to MongoDB and Redis before starting server
-await connectDB()
-await redisClient.connect()
-console.log('Redis connected')
+// try {
+//   await redisClient.connect()
+//   console.log('Redis connected')
+// } catch (error) {
+//   console.warn('Redis unavailable, continuing without cache')
+// }
 
 // Start server
 app.listen(PORT, () => {

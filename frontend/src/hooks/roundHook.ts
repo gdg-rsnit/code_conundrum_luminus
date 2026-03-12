@@ -58,7 +58,7 @@ export const useCreateRound = () => {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["getRounds"] });
 		},
-		onError: (error: any) => console.error(error),
+		onError: (error: unknown) => console.error(error),
 	});
 };
 
@@ -72,7 +72,7 @@ export const useUpdateRound = () => {
 			queryClient.invalidateQueries({ queryKey: ["getRounds"] });
 			queryClient.invalidateQueries({ queryKey: ["getRoundById", variables.roundId] });
 		},
-		onError: (error: any) => console.error(error),
+		onError: (error: unknown) => console.error(error),
 	});
 };
 
@@ -84,7 +84,7 @@ export const useDeleteRound = () => {
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["getRounds"] });
 		},
-		onError: (error: any) => console.error(error),
+		onError: (error: unknown) => console.error(error),
 	});
 };
 
@@ -96,8 +96,9 @@ export const useStartRound = () => {
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ["getRounds"] });
 			queryClient.invalidateQueries({ queryKey: ["getRoundById", variables.roundId] });
+			queryClient.invalidateQueries({ queryKey: ["contest", "activeRound"] });
 		},
-		onError: (error: any) => console.error(error),
+		onError: (error: unknown) => console.error(error),
 	});
 };
 
@@ -109,8 +110,9 @@ export const usePauseResumeRound = () => {
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ["getRounds"] });
 			queryClient.invalidateQueries({ queryKey: ["getRoundById", variables.roundId] });
+			queryClient.invalidateQueries({ queryKey: ["contest", "activeRound"] });
 		},
-		onError: (error: any) => console.error(error),
+		onError: (error: unknown) => console.error(error),
 	});
 };
 
@@ -123,8 +125,9 @@ export const useExtendRound = () => {
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ["getRounds"] });
 			queryClient.invalidateQueries({ queryKey: ["getRoundById", variables.roundId] });
+			queryClient.invalidateQueries({ queryKey: ["contest", "activeRound"] });
 		},
-		onError: (error: any) => console.error(error),
+		onError: (error: unknown) => console.error(error),
 	});
 };
 
@@ -136,8 +139,9 @@ export const useEndRound = () => {
 		onSuccess: (_, variables) => {
 			queryClient.invalidateQueries({ queryKey: ["getRounds"] });
 			queryClient.invalidateQueries({ queryKey: ["getRoundById", variables.roundId] });
+			queryClient.invalidateQueries({ queryKey: ["contest", "activeRound"] });
 		},
-		onError: (error: any) => console.error(error),
+		onError: (error: unknown) => console.error(error),
 	});
 };
 
@@ -150,6 +154,6 @@ export const useResetRound = () => {
 			queryClient.invalidateQueries({ queryKey: ["getRounds"] });
 			queryClient.invalidateQueries({ queryKey: ["getRoundById", variables.roundId] });
 		},
-		onError: (error: any) => console.error(error),
+		onError: (error: unknown) => console.error(error),
 	});
 };

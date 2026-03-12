@@ -11,7 +11,7 @@ export const useLogin = () => {
   return useMutation({
     mutationFn: ({ email, password }: LoginCredentials) => 
       loginRequest({ email, password }),
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('Login error:', error);
     },
   });
@@ -20,7 +20,7 @@ export const useLogin = () => {
 export const useLogout = () => {
   return useMutation({
     mutationFn: logoutRequest,
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('Logout error:', error);
     },
   });
@@ -45,7 +45,7 @@ export const useDeleteUser = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['getAllUsers'] });
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('Delete user error:', error);
     },
   });

@@ -18,7 +18,7 @@ api.interceptors.response.use(
             localStorage.removeItem("cc_auth_user");
             
             // Redirect to login page
-            window.location.href = "/login";
+            window.location.href = "/register";
         }
         
         return Promise.reject(error);

@@ -51,7 +51,7 @@ export const useUpdateTeamStatus = () => {
             queryClient.invalidateQueries({ queryKey: ["getAllTeams"] });
             queryClient.invalidateQueries({ queryKey: ["getBannedTeams"] });
         },
-        onError: (error: any) => console.error(error),
+        onError: (error: unknown) => console.error(error),
     });
 };
 
@@ -66,7 +66,7 @@ export const usePenalizeTeams = () => {
             queryClient.invalidateQueries({ queryKey: ["getAllTeams"] });
             queryClient.invalidateQueries({ queryKey: ["getBannedTeams"] });
         },
-        onError: (error: any) => console.error(error),
+        onError: (error: unknown) => console.error(error),
     });
 };
 
@@ -91,6 +91,6 @@ export const useDeletePenalty = () => {
             queryClient.invalidateQueries({ queryKey: ["getAllTeams"] });
             queryClient.invalidateQueries({ queryKey: ["getBannedTeams"] });
         },
-        onError: (error: any) => console.error(error),
+        onError: (error: unknown) => console.error(error),
     });
 };

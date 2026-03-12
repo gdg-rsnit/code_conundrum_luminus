@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import {
   useGetRounds,
@@ -34,10 +34,6 @@ const getErrorMessage = (error, defaultMessage = "An error occurred") => {
   if (Array.isArray(error.response?.data?.error)) {
     return error.response.data.error.map(err => err.message).join(", ");
   }
-  // Check if backend returns a plain string in error
-  if (typeof error.response?.data?.error === "string") {
-    return error.response.data.error;
-  }
   // Check if error.response.data is an array (Zod validation errors)
   if (Array.isArray(error.response?.data)) {
     return error.response.data.map(err => err.message).join(", ");
@@ -51,13 +47,8 @@ const getErrorMessage = (error, defaultMessage = "An error occurred") => {
 };
 
 // Timer component for live rounds
-const RoundTimer = ({ round, onTimerEnd }) => {
+const RoundTimer = ({ round }) => {
   const [timeRemaining, setTimeRemaining] = useState(0);
-  const hasTriggeredEnd = useRef(false);
-
-  useEffect(() => {
-    hasTriggeredEnd.current = false;
-  }, [round._id, round.status, round.endTime]);
 
   useEffect(() => {
     if (round.status !== "LIVE" || !round.endTime) {
@@ -75,16 +66,6 @@ const RoundTimer = ({ round, onTimerEnd }) => {
 
     setTimeRemaining(calculateTimeRemaining());
 
-    const maybeAutoEndRound = (remainingSeconds) => {
-      if (remainingSeconds > 0 || round.isPaused || hasTriggeredEnd.current) {
-        return;
-      }
-      hasTriggeredEnd.current = true;
-      onTimerEnd?.(round);
-    };
-
-    maybeAutoEndRound(calculateTimeRemaining());
-
     const interval = setInterval(() => {
       // While paused, keep the rendered value stable.
       if (round.isPaused) {
@@ -95,12 +76,11 @@ const RoundTimer = ({ round, onTimerEnd }) => {
       setTimeRemaining(remaining);
       if (remaining <= 0) {
         clearInterval(interval);
-        maybeAutoEndRound(remaining);
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [round, onTimerEnd]);
+  }, [round.status, round.endTime, round.isPaused]);
 
   if (round.status !== "LIVE") return null;
 
@@ -150,7 +130,6 @@ export default function RoundPanel() {
   // Confirmation modal state
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
-  const [statusFilter, setStatusFilter] = useState("LIVE");
 
   // Hooks
   const { data: rounds = [], isLoading, error } = useGetRounds();
@@ -284,20 +263,6 @@ export default function RoundPanel() {
     });
   };
 
-  const onAutoEndRound = async (round) => {
-    if (endRoundMutation.isPending) {
-      return;
-    }
-
-    const loadingToast = toast.loading(`Time is up for Round ${round.roundNumber}. Ending...`);
-    try {
-      await endRoundMutation.mutateAsync({ roundId: round._id });
-      toast.success(`Round ${round.roundNumber} has ended automatically.`, { id: loadingToast });
-    } catch (error) {
-      toast.error(getErrorMessage(error, "Failed to auto-end round"), { id: loadingToast });
-    }
-  };
-
   const onResetRound = (roundId, roundNumber) => {
     openConfirmModal({
       title: "🔄 Reset Round",
@@ -334,19 +299,6 @@ export default function RoundPanel() {
       ENDED: { bg: "bg-red-400/10", border: "border-red-400", text: "text-red-300", icon: "⏹️", glow: "shadow-red-400/20" }
     };
     return styles[status];
-  };
-
-  const filteredRounds = rounds.filter((round) => {
-    if (statusFilter === "DRAFT") return round.status === "DRAFT";
-    if (statusFilter === "LIVE") return round.status === "LIVE";
-    if (statusFilter === "ENDED") return round.status === "ENDED";
-    return true;
-  });
-
-  const statusCounts = {
-    DRAFT: rounds.filter((round) => round.status === "DRAFT").length,
-    LIVE: rounds.filter((round) => round.status === "LIVE").length,
-    ENDED: rounds.filter((round) => round.status === "ENDED").length,
   };
 
   if (isLoading) return <Loading />;
@@ -427,143 +379,114 @@ export default function RoundPanel() {
               <p className="text-gray-600 text-sm">Create your first round above!</p>
             </div>
           ) : (
-            <div>
-              <div className="flex flex-wrap gap-3 mb-6">
-                <button
-                  className={`btn ${statusFilter === "DRAFT" ? "btn-orange" : "btn-ghost"}`}
-                  onClick={() => setStatusFilter("DRAFT")}
-                >
-                  📝 Draft ({statusCounts.DRAFT})
-                </button>
-                <button
-                  className={`btn ${statusFilter === "LIVE" ? "btn-green" : "btn-ghost"}`}
-                  onClick={() => setStatusFilter("LIVE")}
-                >
-                  🔴 Live ({statusCounts.LIVE})
-                </button>
-                <button
-                  className={`btn ${statusFilter === "ENDED" ? "btn-danger" : "btn-ghost"}`}
-                  onClick={() => setStatusFilter("ENDED")}
-                >
-                  ⏹️ Ended ({statusCounts.ENDED})
-                </button>
-              </div>
-
-              {filteredRounds.length === 0 ? (
-                <div className="panel text-center py-8 border-dashed border-cyan-400/30 bg-cyan-400/5">
-                  <p className="text-gray-500 text-sm">No {statusFilter.toLowerCase()} rounds</p>
-                </div>
-              ) : (
-                <div className="grid gap-6 grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
-                  {filteredRounds.map((r) => {
-                    const style = getStatusStyle(r.status);
-                    return (
-                      <div
-                        key={r._id}
-                        className={`panel ${style.bg} border-2 ${style.border} hover:shadow-xl ${style.glow} transition-all duration-300 hover:-translate-y-1`}
-                      >
-                        {/* Header with status */}
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <div className="text-5xl font-black text-cyan-300">#{r.roundNumber}</div>
-                            <p className="text-xs text-gray-400">Round</p>
-                          </div>
-                          <div className={`px-3 py-1 rounded-full border ${style.border} ${style.bg}`}>
-                            <span className="text-sm font-bold flex items-center gap-1">
-                              {style.icon}
-                              <span className={style.text}>{r.status}</span>
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Timer for LIVE rounds */}
-                        {r.status === "LIVE" && (
-                          <div className="mb-4 p-3 rounded bg-black/30 border border-green-400/30">
-                            <RoundTimer round={r} onTimerEnd={onAutoEndRound} />
-                          </div>
-                        )}
-
-                        {/* Stats */}
-                        <div className="grid grid-cols-3 gap-3 mb-4 py-3 border-y border-cyan-400/20">
-                          <div className="text-center">
-                            <p className="text-sm font-bold text-green-400">{formatHms(r.duration)}</p>
-                            <p className="text-xs text-gray-400">Duration</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm font-bold text-blue-400">
-                              {r.startTime ? new Date(r.startTime).toLocaleTimeString() : "--:--"}
-                            </p>
-                            <p className="text-xs text-gray-400">Started</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm font-bold text-purple-300">
-                              {r.endTime ? new Date(r.endTime).toLocaleTimeString() : "--:--"}
-                            </p>
-                            <p className="text-xs text-gray-400">Ends</p>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="space-y-2">
-                          {r.status === "DRAFT" && (
-                            <>
-                              <button
-                                className="w-full btn btn-green text-xs mb-2"
-                                onClick={() => onStartRound(r._id, r.roundNumber)}
-                                disabled={startRoundMutation.isPending}
-                              >
-                                ▶️ Start Round
-                              </button>
-                              <button
-                                className="w-full btn btn-danger text-xs"
-                                onClick={() => onDeleteRound(r._id, r.roundNumber)}
-                                disabled={deleteRoundMutation.isPending}
-                              >
-                                🗑️ Delete
-                              </button>
-                            </>
-                          )}
-                          {r.status === "LIVE" && (
-                            <>
-                              <div className="grid grid-cols-2 gap-2">
-                                <button
-                                  className="btn btn-orange text-xs"
-                                  onClick={() => onPauseResumeRound(r._id, r.roundNumber, r.isPaused)}
-                                  disabled={pauseResumeRoundMutation.isPending}
-                                >
-                                  {r.isPaused ? "▶️ Resume" : "⏸️ Pause"}
-                                </button>
-                                <button
-                                  className="btn btn-cyan text-xs"
-                                  onClick={() => openExtendModal(r)}
-                                >
-                                  ⏱️ Extend
-                                </button>
-                              </div>
-                              <button
-                                className="w-full btn btn-danger text-xs mt-2"
-                                onClick={() => onEndRound(r._id, r.roundNumber)}
-                                disabled={endRoundMutation.isPending}
-                              >
-                                ⏹️ End Round
-                              </button>
-                            </>
-                          )}
-                          {r.status === "ENDED" && (
-                            <button
-                              className="w-full btn btn-orange text-xs"
-                              onClick={() => onResetRound(r._id, r.roundNumber)}
-                              disabled={resetRoundMutation.isPending}
-                            >
-                              🔄 Reset Round
-                            </button>
-                          )}
-                        </div>
+            <div className="grid gap-6 grid-cols-[repeat(auto-fit,minmax(300px,1fr))]">
+              {rounds.map((r) => {
+                const style = getStatusStyle(r.status);
+                return (
+                  <div 
+                    key={r._id} 
+                    className={`panel ${style.bg} border-2 ${style.border} hover:shadow-xl ${style.glow} transition-all duration-300 hover:-translate-y-1`}
+                  >
+                    {/* Header with status */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <div className="text-5xl font-black text-cyan-300">#{r.roundNumber}</div>
+                        <p className="text-xs text-gray-400">Round</p>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                      <div className={`px-3 py-1 rounded-full border ${style.border} ${style.bg}`}>
+                        <span className="text-sm font-bold flex items-center gap-1">
+                          {style.icon}
+                          <span className={style.text}>{r.status}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Timer for LIVE rounds */}
+                    {r.status === "LIVE" && (
+                      <div className="mb-4 p-3 rounded bg-black/30 border border-green-400/30">
+                        <RoundTimer round={r} />
+                      </div>
+                    )}
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-3 mb-4 py-3 border-y border-cyan-400/20">
+                      <div className="text-center">
+                        <p className="text-sm font-bold text-green-400">{formatHms(r.duration)}</p>
+                        <p className="text-xs text-gray-400">Duration</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-bold text-blue-400">
+                          {r.startTime ? new Date(r.startTime).toLocaleTimeString() : "--:--"}
+                        </p>
+                        <p className="text-xs text-gray-400">Started</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-bold text-purple-300">
+                          {r.endTime ? new Date(r.endTime).toLocaleTimeString() : "--:--"}
+                        </p>
+                        <p className="text-xs text-gray-400">Ends</p>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="space-y-2">
+                      {r.status === "DRAFT" && (
+                        <>
+                          <button 
+                            className="w-full btn btn-green text-xs mb-2"
+                            onClick={() => onStartRound(r._id, r.roundNumber)}
+                            disabled={startRoundMutation.isPending}
+                          >
+                            ▶️ Start Round
+                          </button>
+                          <button 
+                            className="w-full btn btn-danger text-xs"
+                            onClick={() => onDeleteRound(r._id, r.roundNumber)}
+                            disabled={deleteRoundMutation.isPending}
+                          >
+                            🗑️ Delete
+                          </button>
+                        </>
+                      )}
+                      {r.status === "LIVE" && (
+                        <>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button 
+                              className="btn btn-orange text-xs"
+                              onClick={() => onPauseResumeRound(r._id, r.roundNumber, r.isPaused)}
+                              disabled={pauseResumeRoundMutation.isPending}
+                            >
+                              {r.isPaused ? "▶️ Resume" : "⏸️ Pause"}
+                            </button>
+                            <button 
+                              className="btn btn-cyan text-xs"
+                              onClick={() => openExtendModal(r)}
+                            >
+                              ⏱️ Extend
+                            </button>
+                          </div>
+                          <button 
+                            className="w-full btn btn-danger text-xs mt-2"
+                            onClick={() => onEndRound(r._id, r.roundNumber)}
+                            disabled={endRoundMutation.isPending}
+                          >
+                            ⏹️ End Round
+                          </button>
+                        </>
+                      )}
+                      {r.status === "ENDED" && (
+                        <button 
+                          className="w-full btn btn-orange text-xs"
+                          onClick={() => onResetRound(r._id, r.roundNumber)}
+                          disabled={resetRoundMutation.isPending}
+                        >
+                          🔄 Reset Round
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
